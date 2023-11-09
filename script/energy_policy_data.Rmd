@@ -1,0 +1,65 @@
+---
+title: "final_project"
+author: "HU Wenxiao","Athena Zhang"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+# Energy Policy Data
+
+## data cleaning
+
+#selecting data
+
+```{r}
+d <-read_csv("data/region-g20+countries.csv")
+```
+
+```{r}
+d_policy <- d |>
+  select('Country', 'Name of policy','Energy Type','Date of announcement','Date of entry info force','Value committed, USD')
+```
+
+#data integrity check for policy date NA
+
+```{r}
+d_policy |>
+  mutate(Date_missing=as.numeric(is.na(`Date of entry info force`)),.after=`Date of entry info force`)|>
+  group_by(Country)|>
+  summarize(N_Date_missing=sum(Date_missing))
+```
+
+```{r}
+d_policy <- d_policy[complete.cases(d_policy),]
+```
+
+#data integrity check for value committed "0"\--NA
+
+```{r}
+d_policy$`Value committed, USD`[d_policy$`Value committed, USD`==0]<-NA
+```
+
+```{r}
+d_policy |>
+  mutate(Value_missing=as.numeric(is.na(`Value committed, USD`)),.after=`Value committed, USD`)|>
+  group_by(Country)|>
+  summarize(N_Value_missing=sum(Value_missing))
+```
+
+#deletion of NA
+
+```{r}
+d_policy <- d_policy[complete.cases(d_policy),]
+```
+
+```{r}
+write.csv(d_policy,"data/clean_policy_dataset.csv",row.names = FALSE)
+```
