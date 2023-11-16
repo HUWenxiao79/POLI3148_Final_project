@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-# Energy Policy Data
+# Data wrangling
 
 ## data cleaning
 
@@ -37,10 +37,6 @@ d_policy |>
   summarize(N_Date_missing=sum(Date_missing))
 ```
 
-```{r}
-d_policy <- d_policy[complete.cases(d_policy),]
-```
-
 #data integrity check for value committed "0"\--NA
 
 ```{r}
@@ -62,4 +58,30 @@ d_policy <- d_policy[complete.cases(d_policy),]
 
 ```{r}
 write.csv(d_policy,"data/clean_policy_dataset.csv",row.names = FALSE)
+```
+
+## separate different countries
+
+```{r}
+d_policy_grouped <- d_policy %>%
+  group_by(Country)
+```
+
+#create dataframes for each country and print them
+
+```{r}
+for(name in unique(d_policy$Country)){
+  d_policy_group <-d_policy_grouped %>% filter(Country == name)
+  filename <-file.path("data",paste0(name,'.csv'))
+  write_csv(d_policy_group,filename)
+}
+```
+
+# Finding Keywords 
+
+## 1. Argentina
+
+```{r}
+d_Argentina <- read.csv("data/policy_by_countries_cleaned/Argentina.csv")
+d_Argentina
 ```
