@@ -77,7 +77,7 @@ for(name in unique(d_policy$Country)){
 }
 ```
 
-# Finding Keywords 
+# Finding Keywords
 
 ## 1. Argentina
 
