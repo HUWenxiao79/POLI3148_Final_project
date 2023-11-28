@@ -70,7 +70,7 @@ write.csv(d_policy,"data/clean_policy_dataset.csv",row.names = FALSE)
 
 # 2. Text mining
 
-## 2.1 Wrangling 
+## 2.1 Wrangling
 
 ```{r}
 d_policy_tokenized=d_policy |>
@@ -155,6 +155,20 @@ d_policy_merged <-d_policy_merged |>
   mutate(n=ifelse(is.na(n),0,n))|>
   mutate(prop=ifelse(is.na(prop),0,prop))|>
   arrange(Country)
+view(d_policy_merged)
+```
+
+pivoting data to perform linear regression:
+
+```{r}
+d_policy_pivoted <- d_policy_merged |>
+  pivot_wider(
+    id_cols = Country,
+    names_from = stem,
+    values_from = prop
+  )
+view(d_policy_pivoted)
+unique(d_policy_pivoted$Country)
 ```
 
 make dtm
@@ -162,3 +176,42 @@ make dtm
 ```{r}
 dtm=d_policy_merged |> cast_dtm(Country,stem,prop)
 ```
+
+importing epi data:
+
+```{r}
+epi <- read_csv('data/epi2022regionalresults05302022.csv')
+view(epi)
+```
+
+selecting only EPI variable
+
+```{r}
+epi_only <- epi |>
+  select(country, EPI.new)
+epi_only <- epi_only |> rename("Country"="country", "EPI"="EPI.new")
+view(epi_only)
+```
+
+changing South Korea to Republic of Korea and United States of America to United States
+
+```{r}
+epi_only$Country[epi_only$Country=="South Korea"] <-"Republic of Korea"
+epi_only$Country[epi_only$Country=="United States of America"] <-"United States"
+```
+
+joining policy data and epi data
+
+```{r}
+d_policy_epi <- left_join(d_policy_pivoted, epi_only, by = "Country")
+view(d_policy_epi)
+```
+
+relocating epi column
+
+```{r}
+d_policy_epi <- d_policy_epi |> relocate(EPI, .after = Country)
+view(d_policy_epi)
+```
+
+linear regression ...
