@@ -113,6 +113,7 @@ word_frequency |>
   scale_size_area(max_size=8)+
   geom_text_wordcloud()+
   theme_minimal()
+view(word_frequency)
 ```
 
 ### 2.3 calculate country-level word frequencies
@@ -214,4 +215,17 @@ d_policy_epi <- d_policy_epi |> relocate(EPI, .after = Country)
 view(d_policy_epi)
 ```
 
-linear regression ...
+linear regression ... (multiple manipulated IV [keywords] v EPI DV) -\> LASSO
+
+-   removes all the non-significant variables that cause multicollinearilty
+
+testing:
+
+```{r}
+install.packages("glmnet")
+library(glmnet)
+```
+
+```{r}
+
+```
