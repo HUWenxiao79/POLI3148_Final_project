@@ -172,12 +172,6 @@ view(d_policy_pivoted)
 unique(d_policy_pivoted$Country)
 ```
 
-make dtm
-
-```{r}
-dtm=d_policy_merged |> cast_dtm(Country,stem,prop)
-```
-
 importing epi data:
 
 ```{r}
