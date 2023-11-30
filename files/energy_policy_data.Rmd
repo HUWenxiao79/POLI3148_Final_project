@@ -114,7 +114,6 @@ word_frequency |>
   scale_size_area(max_size=8)+
   geom_text_wordcloud()+
   theme_minimal()
-view(word_frequency)
 ```
 
 ```{r}
