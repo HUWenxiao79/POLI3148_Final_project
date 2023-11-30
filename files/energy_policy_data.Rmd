@@ -172,6 +172,12 @@ view(d_policy_pivoted)
 unique(d_policy_pivoted$Country)
 ```
 
+exporting data on keywords:
+
+```{r}
+write.csv(d_policy_pivoted, file = "data/00keyword_data.csv")
+```
+
 importing epi data:
 
 ```{r}
@@ -193,6 +199,12 @@ changing South Korea to Republic of Korea and United States of America to United
 ```{r}
 epi_only$Country[epi_only$Country=="South Korea"] <-"Republic of Korea"
 epi_only$Country[epi_only$Country=="United States of America"] <-"United States"
+```
+
+exporting epi data
+
+```{r}
+write.csv(epi_only, "data/00epi_data.csv", row.names = FALSE)
 ```
 
 joining policy data and epi data

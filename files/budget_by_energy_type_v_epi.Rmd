@@ -1,0 +1,78 @@
+---
+title: "budget_by_energy_type_v_epi"
+author: "Athena Zhang"
+date: "2023-11-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(tidytext)
+library(SnowballC)
+library(ggwordcloud)
+```
+
+```{r}
+d_epi <- read_csv("data/00epi_data.csv")
+d <- read_csv("data/clean_policy_dataset.csv")
+```
+
+```{r}
+d <- d|> select("Country", "Energy Type", "Value committed, USD")
+
+```
+
+```{r}
+d_budget <- d |> 
+  group_by(Country, `Energy Type`) |>
+  summarise(total_budget = sum(`Value committed, USD`))
+```
+
+```{r}
+d_budget_pivoted <- d_budget |>
+  pivot_wider(
+    id_cols = Country,
+    names_from = `Energy Type`,
+    values_from = total_budget
+  )
+```
+
+```{r}
+d_budget_epi <- left_join(d_budget_pivoted, d_epi, by = "Country")
+```
+
+```{r}
+d_budget_epi[is.na(d_budget_epi)] <- 0
+```
+
+## LASSO
+
+```{r}
+library(glmnet)
+```
+
+```{r}
+#outcome variable = EPI
+y <- d_budget_epi$EPI
+#predictor variables = budget (by energy type)
+x <- d_budget_epi |> select(`multiple energy types`:`other renewable`) |> as.matrix()
+```
+
+```{r}
+model <- glmnet(x, y , lambda = 0.01, family = "gaussian", intercept = TRUE, alpha = 1)
+
+summary(model)
+
+lasso_coef <- model$beta |> as.matrix() |> as.data.frame() |> 
+  rownames_to_column(var = "predictor") |> as_tibble()
+
+lasso_coef_nonzero <- lasso_coef |> filter(s0 != 0)
+
+lasso_coef_nonzero |> 
+  ggplot() + geom_bar(aes(y = predictor, x = s0), stat = "identity")
+```
