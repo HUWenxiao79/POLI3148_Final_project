@@ -17,6 +17,7 @@ library(lubridate)
 library(tidytext)
 library(SnowballC)
 library(ggwordcloud)
+library(wordcloud2)
 ```
 
 # Policy data
@@ -114,6 +115,10 @@ word_frequency |>
   geom_text_wordcloud()+
   theme_minimal()
 view(word_frequency)
+```
+
+```{r}
+wordcloud2(word_frequency,color="darkgreen")
 ```
 
 ### 2.3 calculate country-level word frequencies
