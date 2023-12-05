@@ -10,9 +10,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-# loading tidyverse package
+# loading package
 library(tidyverse)
+library(lubridate)
+library(tidytext)
+library(SnowballC)
+library(ggwordcloud)
+library(wordcloud2)
 ```
+
+# 1. Data cleaning for policy and index 
 
 ```{r}
 # importing data
@@ -23,6 +30,7 @@ d <- read.csv('data/ALL_COUNTRY.csv')
 # selecting relevant data
 policy <- d |> 
   select('Country', 'Policy.Category', 'Name.of.policy', 'Energy.Type', 'Date.of.entry.info.force','Value.committed..USD')
+
 ```
 
 ```{r}
@@ -69,4 +77,94 @@ cc <- cc |> mutate(country = recode(country,
 # remove 'European Institutions' from country in policy
 policy <- policy |>
   filter(Country != 'European Institutions')
+```
+
+```{r}
+#rename for 'country'
+cc <- rename(cc, Country = country)
+```
+
+## 2. Text mining for policy data
+
+## 2.1 data wrangling
+
+```{r}
+policy_tokenized=policy |>
+  select(Country,`Name.of.policy`,'Date.of.entry.info.force')|>
+  unnest_tokens(word,`Name.of.policy`)
+policy_tokenized <- policy_tokenized |>
+  filter(!str_detect(word, "[0-9]+"))
+```
+
+```{r}
+# remove stop words
+data("stop_words")
+policy_tokenized=policy_tokenized |>
+  anti_join(stop_words,by="word")
+```
+
+```{r}
+#create stem
+policy_tokenized=policy_tokenized |>
+  mutate(stem=wordStem(word))
+```
+
+## 2.2 data analysis
+
+### A. word frequency
+
+```{r}
+word_frequency = policy_tokenized |>
+  count(stem, sort = TRUE)
+```
+
+### B. plot a word cloud
+
+```{r}
+word_frequency |>
+  slice(1:100)|>
+  ggplot(aes(label=stem,size=n))+
+  scale_size_area(max_size=8)+
+  geom_text_wordcloud()+
+  theme_minimal()
+```
+
+```{r}
+wordcloud2(word_frequency,color="darkgreen")
+```
+
+### C. compare policy design between 2020,2021,2022
+
+```{r}
+
+```
+
+### D. calculate country-level word frequencies
+
+```{r}
+#calculate the proprtion for each keywords
+policy_frequencies <- policy_tokenized |>
+  group_by(Country, stem) |>
+  count()|>
+  mutate(prop=n/sum(word_frequency$n)*100)
+```
+
+creating pivoted dataframe to perform linear regression
+
+```{r}
+policy_pivoted <-policy_frequencies |>
+  pivot_wider(names_from=stem,values_from=prop,values_fill=0)|>
+  select(-n)|>
+  group_by(Country)|>
+  summarise(across(everything(),~if(all(.==0))0 else sum(.)))
+```
+
+```{r}
+#joining policy data and index cc data
+policy_cc <- left_join(policy_pivoted, cc, by = "Country")
+```
+
+```{r}
+#relocating cc index column
+policy_cc <- policy_cc |> relocate(cc, .after = Country)
 ```
