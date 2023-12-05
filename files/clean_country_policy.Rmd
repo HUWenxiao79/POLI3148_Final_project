@@ -33,6 +33,12 @@ policy <- policy |>
 ```
 
 ```{r}
+# remove 0 for value committed
+policy <- policy |>
+  filter(Value.committed..USD != 0)
+```
+
+```{r}
 # keep 'clean conditional' and 'clean unconditional' policies
 policy <- policy |>
   filter(Policy.Category %in% c('clean conditional', 'clean unconditional'))
