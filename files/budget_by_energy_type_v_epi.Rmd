@@ -1,5 +1,5 @@
 ---
-title: "budget_by_energy_type_v_epi"
+title: "budget_by_energy_type_v_cc"
 author: "Athena Zhang"
 date: "2023-11-30"
 output: html_document
@@ -18,36 +18,86 @@ library(ggwordcloud)
 ```
 
 ```{r}
-d_epi <- read_csv("data/00epi_data.csv")
-d <- read_csv("data/clean_policy_dataset.csv")
+epi <- read_csv('data/epi2022regionalresults05302022.csv')
+d <- read.csv('data/ALL_COUNTRY.csv')
 ```
 
 ```{r}
-d <- d|> select("Country", "Energy Type", "Value committed, USD")
-
+# selecting relevant policy data
+policy <- d |> 
+  select('Country', 'Policy.Category', 'Name.of.policy', 'Energy.Type', 'Date.of.entry.info.force','Value.committed..USD')
 ```
 
 ```{r}
-d_budget <- d |> 
-  group_by(Country, `Energy Type`) |>
-  summarise(total_budget = sum(`Value committed, USD`))
+# removing NA for date of entry
+policy$'Date.of.entry.info.force' <- na_if(policy$'Date.of.entry.info.force', "")
+policy <- policy |>
+  filter(!is.na(Date.of.entry.info.force))
 ```
 
 ```{r}
-d_budget_pivoted <- d_budget |>
+# remove 0 for value committed
+policy <- policy |>
+  filter(Value.committed..USD != 0)
+```
+
+```{r}
+# keep 'clean conditional' and 'clean unconditional' policies
+policy <- policy |>
+  filter(Policy.Category %in% c('clean conditional', 'clean unconditional'))
+```
+
+```{r}
+# selecting only country and climate change relevant measures
+cc <- epi |>
+  select(country, PCC.new)
+```
+
+```{r}
+setdiff(policy$Country, cc$country) #in policy but not in cc
+# recode countries in cc
+cc <- cc |> mutate(country = recode(country,
+                           "Netherlands" = "The Netherlands",
+                           "United States of America" = "United States",
+                           "Viet Nam" = "Vietnam",
+                           "South Korea" = "Republic of Korea"))
+```
+
+```{r}
+# remove 'European Institutions' from country in policy
+policy <- policy |>
+  filter(Country != 'European Institutions')
+```
+
+```{r}
+# aggregating buget by energy type
+policy_budget <- policy |> 
+  group_by(Country, `Energy.Type`) |>
+  summarise(total_budget = sum(`Value.committed..USD`))
+```
+
+```{r}
+# pivoting table so energy type is the variable
+policy_budget_pivoted <- policy_budget |>
   pivot_wider(
     id_cols = Country,
-    names_from = `Energy Type`,
+    names_from = `Energy.Type`,
     values_from = total_budget
   )
 ```
 
 ```{r}
-d_budget_epi <- left_join(d_budget_pivoted, d_epi, by = "Country")
+# NA values to 0
+policy_budget_pivoted[is.na(policy_budget_pivoted)] <- 0
 ```
 
 ```{r}
-d_budget_epi[is.na(d_budget_epi)] <- 0
+# rename budget:Country to country
+policy_budget_pivoted <- rename(policy_budget_pivoted, country = Country)
+```
+
+```{r}
+budget_cc <- left_join(policy_budget_pivoted, cc, by = "country")
 ```
 
 ## LASSO
@@ -58,9 +108,9 @@ library(glmnet)
 
 ```{r}
 #outcome variable = EPI
-y <- d_budget_epi$EPI
+y <- budget_cc$PCC.new
 #predictor variables = budget (by energy type)
-x <- d_budget_epi |> select(`multiple energy types`:`other renewable`) |> as.matrix()
+x <- budget_cc |> select(`solar`:`oil and oil products`) |> as.matrix()
 ```
 
 ```{r}

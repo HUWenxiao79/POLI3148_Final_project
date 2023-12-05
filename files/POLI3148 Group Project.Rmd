@@ -1,5 +1,5 @@
 ---
-title: "clean_country_policy"
+title: "POLI3148 Group Project"
 author: "Athena Zhang"
 date: "2023-12-05"
 output: pdf_document
@@ -245,7 +245,7 @@ policy_cc <- left_join(d_policy_pivoted, cc, by = "Country")
 policy_cc <- policy_cc |> relocate(PCC.new, .after = Country)
 ```
 
-# 3. LASSO regression
+# 3. LASSO regression: Keywords (IV) and Climate Change Index (DV)
 
 ```{r}
 # set predictors and outcome
@@ -272,4 +272,56 @@ lasso_coef_nonzero <- lasso_coef |> filter(s0 != 0)
 lasso_coef_nonzero |> 
   ggplot() + geom_bar(aes(y = predictor, x = s0), stat = "identity")
 
+```
+
+# 4. Data cleaning for budget data
+
+```{r}
+# aggregating buget by energy type
+policy_budget <- policy |> 
+  group_by(Country, `Energy.Type`) |>
+  summarise(total_budget = sum(`Value.committed..USD`))
+```
+
+```{r}
+# pivoting table so energy type is the variable
+policy_budget_pivoted <- policy_budget |>
+  pivot_wider(
+    id_cols = Country,
+    names_from = `Energy.Type`,
+    values_from = total_budget
+  )
+```
+
+```{r}
+# NA values to 0
+policy_budget_pivoted[is.na(policy_budget_pivoted)] <- 0
+```
+
+```{r}
+#combining budget and cc
+budget_cc <- left_join(policy_budget_pivoted, cc, by = "Country")
+```
+
+# 5. LASSO regression: Budget by energy type (IV) and Climate Change Index (DV)
+
+```{r}
+#outcome variable = EPI
+y <- budget_cc$PCC.new
+#predictor variables = budget (by energy type)
+x <- budget_cc |> select(`solar`:`oil and oil products`) |> as.matrix()
+```
+
+```{r}
+model <- glmnet(x, y , lambda = 0.01, family = "gaussian", intercept = TRUE, alpha = 1)
+
+summary(model)
+
+lasso_coef <- model$beta |> as.matrix() |> as.data.frame() |> 
+  rownames_to_column(var = "predictor") |> as_tibble()
+
+lasso_coef_nonzero <- lasso_coef |> filter(s0 != 0)
+
+lasso_coef_nonzero |> 
+  ggplot() + geom_bar(aes(y = predictor, x = s0), stat = "identity")
 ```
