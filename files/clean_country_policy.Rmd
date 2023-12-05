@@ -37,3 +37,30 @@ policy <- policy |>
 policy <- policy |>
   filter(Policy.Category %in% c('clean conditional', 'clean unconditional'))
 ```
+
+```{r}
+# importing data
+epi <- read_csv('data/epi2022regionalresults05302022.csv')
+```
+
+```{r}
+# selecting only country and climate change relevant measures
+cc <- epi |>
+  select(country, PCC.new)
+```
+
+```{r}
+setdiff(policy$Country, cc$country) #in policy but not in cc
+# recode countries in cc
+cc <- cc |> mutate(country = recode(country,
+                           "Netherlands" = "The Netherlands",
+                           "United States of America" = "United States",
+                           "Viet Nam" = "Vietnam",
+                           "South Korea" = "Republic of Korea"))
+```
+
+```{r}
+# remove 'European Institutions' from country in policy
+policy <- policy |>
+  filter(Country != 'European Institutions')
+```
