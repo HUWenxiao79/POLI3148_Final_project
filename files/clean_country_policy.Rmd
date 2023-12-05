@@ -19,7 +19,7 @@ library(ggwordcloud)
 library(wordcloud2)
 ```
 
-# 1. Data cleaning for policy and index 
+# 1. Data cleaning for policy and index
 
 ```{r}
 # importing data
@@ -149,22 +149,56 @@ policy_frequencies <- policy_tokenized |>
   mutate(prop=n/sum(word_frequency$n)*100)
 ```
 
-creating pivoted dataframe to perform linear regression
-
 ```{r}
-policy_pivoted <-policy_frequencies |>
-  pivot_wider(names_from=stem,values_from=prop,values_fill=0)|>
-  select(-n)|>
-  group_by(Country)|>
-  summarise(across(everything(),~if(all(.==0))0 else sum(.)))
+# creating pivoted dataframe to perform linear regression
+d_policy_pivoted <- policy_frequencies |>
+  pivot_wider(
+    id_cols = Country,
+    names_from = stem,
+    values_from = prop
+  )
 ```
 
 ```{r}
-#joining policy data and index cc data
-policy_cc <- left_join(policy_pivoted, cc, by = "Country")
+# turn NA values to 0
+d_policy_pivoted[is.na(d_policy_pivoted)] <- 0
+```
+
+```{r}
+#joining policy data and climate change index data
+policy_cc <- left_join(d_policy_pivoted, cc, by = "Country")
 ```
 
 ```{r}
 #relocating cc index column
-policy_cc <- policy_cc |> relocate(cc, .after = Country)
+policy_cc <- policy_cc |> relocate(PCC.new, .after = Country)
+```
+
+# 3. LASSO regression
+
+```{r}
+# set predictors and outcome
+y <- policy_cc$PCC.new
+
+x <- policy_cc |> select(agricultur:yorker) |> as.matrix()
+```
+
+```{r}
+# load LASSO regression package
+library(glmnet)
+```
+
+```{r}
+model <- glmnet(x, y , lambda = 2, family = "gaussian", intercept = TRUE, alpha = 1)
+
+summary(model)
+
+lasso_coef <- model$beta |> as.matrix() |> as.data.frame() |> 
+  rownames_to_column(var = "predictor") |> as_tibble()
+
+lasso_coef_nonzero <- lasso_coef |> filter(s0 != 0)
+
+lasso_coef_nonzero |> 
+  ggplot() + geom_bar(aes(y = predictor, x = s0), stat = "identity")
+
 ```
