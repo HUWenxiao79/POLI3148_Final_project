@@ -17,6 +17,8 @@ library(tidytext)
 library(SnowballC)
 library(ggwordcloud)
 library(wordcloud2)
+library(GGally)
+library(ggplot2)
 ```
 
 # 1. Data cleaning for policy and index
@@ -136,7 +138,76 @@ wordcloud2(word_frequency,color="darkgreen")
 ### C. compare policy design between 2020,2021,2022
 
 ```{r}
+# Calculate term frequencies for 2020, 2021 and 2022 respectively
+word_frequency_compare_22_21_20 <- policy_tokenized |>
+  mutate(year = year(dmy(Date.of.entry.info.force)), .after = "Date.of.entry.info.force") |>
+  # Extract the year of the speech
+  filter(year == 2020 | year == 2021 | year == 2022) |>
+  group_by(year, stem) |>
+  count(sort = TRUE) |>
+  pivot_wider(names_from = "year", values_from = "n", 
+              names_prefix = "n_", values_fill = 0) |>
+  ungroup() |>
+  mutate(
+    prop_2022 = n_2022 / sum(n_2022),
+    prop_2021 = n_2021 / sum(n_2021),
+    prop_2020 = n_2020 / sum(n_2020)
+  )
+```
 
+```{r}
+# plot correlation matrix for the three variables
+ word_frequency_compare_22_21_20|>
+ select(prop_2022,prop_2021,prop_2020)|>
+ ggpairs(
+ columns = c("prop_2022","prop_2021","prop_2020"),
+ columnLabels= c("2022","2021","2020"),
+ upper= list(continuous=wrap("cor",method="spearman",color="blue")),
+ diag= list(continuous=wrap("barDiag",bins=30,fill="white",color="black")),
+ lower= list(continuous=wrap("smooth",alpha=0.1,color="gray")))+
+ theme_bw()
+```
+
+plot the wordcloud for 2020, 2021,2022 based on the differences
+
+```{r}
+#calculate the differences
+tmp_plot_20 = word_frequency_compare_22_21_20 |>
+  mutate(diff = prop_2020 - prop_2021) |>
+  slice_max(diff, n = 30) |>
+  arrange(desc(diff))
+
+tmp_plot_21 = word_frequency_compare_22_21_20 |>
+  mutate(diff = prop_2021 - prop_2020) |>
+  slice_max(diff, n = 30) |>
+  arrange(desc(diff))
+
+tmp_plot_22 = word_frequency_compare_22_21_20 |>
+  mutate(diff = prop_2022 - prop_2021) |>
+  slice_max(diff, n = 30) |>
+  arrange(desc(diff))
+```
+
+```{r}
+#merge the data
+tmp_plot_merge = tmp_plot_21 |> 
+  mutate(Year = "2021") |>
+  bind_rows(
+    tmp_plot_20 |> mutate(Year = "2020")
+  ) |> 
+  bind_rows(
+    tmp_plot_22 |> mutate(Year = "2022")
+  )
+```
+
+```{r}
+#draw wordcloud
+tmp_plot_merge |>
+  ggplot(aes(label = stem, y = Year, color = Year, size = abs(diff))) +
+  geom_text_wordcloud_area() +
+  scale_size_area(max_size = 30) +
+  theme_minimal() +
+  theme(legend.position = "top")
 ```
 
 ### D. calculate country-level word frequencies
