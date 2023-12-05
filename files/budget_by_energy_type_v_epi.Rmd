@@ -69,6 +69,7 @@ policy <- policy |>
   filter(Country != 'European Institutions')
 ```
 
+
 ```{r}
 # aggregating buget by energy type
 policy_budget <- policy |> 
