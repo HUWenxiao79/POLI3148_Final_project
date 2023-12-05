@@ -1,0 +1,39 @@
+---
+title: "clean_country_policy"
+author: "Athena Zhang"
+date: "2023-12-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# loading tidyverse package
+library(tidyverse)
+```
+
+```{r}
+# importing data
+d <- read.csv('data/ALL_COUNTRY.csv')
+```
+
+```{r}
+# selecting relevant data
+policy <- d |> 
+  select('Country', 'Policy.Category', 'Name.of.policy', 'Energy.Type', 'Date.of.entry.info.force','Value.committed..USD')
+```
+
+```{r}
+# removing NA for date of entry
+policy$'Date.of.entry.info.force' <- na_if(policy$'Date.of.entry.info.force', "")
+policy <- policy |>
+  filter(!is.na(Date.of.entry.info.force))
+```
+
+```{r}
+# keep 'clean conditional' and 'clean unconditional' policies
+policy <- policy |>
+  filter(Policy.Category %in% c('clean conditional', 'clean unconditional'))
+```
