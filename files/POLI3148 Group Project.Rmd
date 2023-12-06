@@ -120,6 +120,16 @@ word_frequency = policy_tokenized |>
   count(stem, sort = TRUE)
 ```
 
+```{r}
+word_frequency |>
+  slice(1:20) |>
+  mutate(stem = reorder(stem, n)) |>
+  ggplot(aes(x = n, y = stem,fill=n)) +
+  geom_col() +
+  scale_fill_gradient(low="chartreuse2",high="chartreuse4")+
+  theme_bw()
+```
+
 ### B. plot a word cloud
 
 ```{r}
