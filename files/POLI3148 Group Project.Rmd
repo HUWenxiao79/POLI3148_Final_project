@@ -19,6 +19,7 @@ library(ggwordcloud)
 library(wordcloud2)
 library(GGally)
 library(ggplot2)
+library(topicmodels)
 ```
 
 # 1. Data cleaning for policy and index
@@ -113,7 +114,7 @@ policy_tokenized=policy_tokenized |>
 
 ## 2.2 data analysis
 
-### A. word frequency
+### A. word frequency (bar chart and word cloud)
 
 ```{r}
 word_frequency = policy_tokenized |>
@@ -130,8 +131,6 @@ word_frequency |>
   theme_bw()
 ```
 
-### B. plot a word cloud
-
 ```{r}
 word_frequency |>
   slice(1:100)|>
@@ -143,6 +142,77 @@ word_frequency |>
 
 ```{r}
 wordcloud2(word_frequency,color="darkgreen")
+```
+
+### B. Use topic modeling to invest more about keywords
+
+```{r}
+#calculate the number for each keywords in country-level
+country_word_frequency <- policy_tokenized |>
+  group_by(Country, stem) |>
+  count()
+```
+
+```{r}
+#create document-term matrix
+dtm = country_word_frequency |> cast_dtm(Country,stem,n)
+```
+
+```{r}
+#set number of topics
+K=10
+
+# Set random number generator seed
+set.seed(500)
+
+# compute the LDA model, inference via 1000 iterations of Gibbs sampling
+m_tm = LDA(dtm, K, method="Gibbs", 
+            control=list(iter = 500, verbose = 25))
+
+summary(m_tm)
+```
+
+```{r}
+#clean result of topic models
+## beta: How words map to topics
+sum_tm_beta = tidy(m_tm, matrix = "beta")
+
+## gamma: How documents map on topics
+sum_tm_gamma = tidy(m_tm, matrix = "gamma") |>
+  rename("uid" = "document") 
+
+sum_tm_gamma_wide = sum_tm_gamma |>
+  pivot_wider(names_from = "topic", values_from = "gamma", names_prefix = "topic_")
+```
+
+```{r}
+#visualize topic modeling result
+sum_tm_gamma |>
+  group_by(topic) |>
+  summarise(sum_gamma = sum(gamma)) |>
+  arrange(desc(sum_gamma))
+
+TOP_N_WORD = 10
+
+topic_top_word = sum_tm_beta |>
+  rename("word" = "term") |>
+  group_by(topic) |>
+  slice_max(beta, n = TOP_N_WORD) |>
+  arrange(topic, desc(beta))
+```
+
+```{r}
+# topics in bar charts
+topic_top_word |>
+  mutate(word = reorder_within(word, beta, topic)) |>
+  ggplot(aes(y = word, x = beta)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~topic, scales = "free_y") +
+  scale_y_reordered() + # Very interesting function. Use with reorder_within
+  labs(
+    title = "Topic Modeling",
+    subtitle = "Top words associated with each topic"
+  )
 ```
 
 ### C. compare policy design between 2020,2021,2022
